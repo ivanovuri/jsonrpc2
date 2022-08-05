@@ -59,6 +59,35 @@ func PositionalAdd(params PositionalAddParamsStructure) int {
 }
 ```
 
+Transport independent using of JSON-RPC 2.0 library.
+Same as earlier, but server logic should be created manually. “Underscore” object (NewJsonRpc2_) is used here for distinction.
+
+```golang
+func HttpHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	request := jsonrpc2.DecodeRequest(r.Body)
+
+	rpcProcessor := jsonrpc2.NewJsonRpc2_()
+	rpcProcessor.RegisterMethod("substract", Substract)
+	rpcProcessor.RegisterMethod("add", AddTwoInts)
+	if err := rpcProcessor.RegisterMethod("pa", PositionalAdd); err != nil {
+		fmt.Println(err)
+	}
+
+	w.Write(rpcProcessor.ProcessRequest(request))
+}
+
+func main() {
+	log.Printf("Starting server on localhost:8888/")
+
+	http.HandleFunc("/", HttpHandler)
+	if err := http.ListenAndServe("localhost:8888", nil); err != nil {
+		panic(err)
+	}
+}
+```
+
 When defining your own registered methods with the rpc server, it is important to consider both named and positional parameters per the specification.
 
 Rpc call with positional parameters:

@@ -111,9 +111,27 @@ func MakeResponse(r Request, returnedValues []reflect.Value) []byte {
 	return nil
 }
 
-func DecodeRequest(requestReader io.ReadCloser) Request {
+func DecodeRequest(requestReader io.Reader) Request {
 	incomingRequest := new(Request)
 	json.NewDecoder(requestReader).Decode(incomingRequest)
 
 	return *incomingRequest
+}
+
+func DecodeRequest2(requestReader io.Reader) (*Request, error) {
+	incomingRequest := new(Request)
+	if err := json.NewDecoder(requestReader).Decode(incomingRequest); err != nil {
+		return nil, err
+	}
+
+	return incomingRequest, nil
+}
+
+func DecodeBatchRequests(requestReader io.Reader) (*[]Request, error) {
+	incomingRequest := new([]Request)
+	if err := json.NewDecoder(requestReader).Decode(incomingRequest); err != nil {
+		return nil, err
+	}
+
+	return incomingRequest, nil
 }
