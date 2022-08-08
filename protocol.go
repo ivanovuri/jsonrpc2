@@ -83,6 +83,22 @@ func ErrorReply(rpcId any, errCode int, message string) []byte {
 	return errorReply
 }
 
+func ErrorReply2(rpcId any, errCode int, message string) *Response {
+	errorResponse := Response{
+		Jsonrpc: protocolVersion,
+		Id:      rpcId,
+		Error: &ErrorObject{
+			Code:    errCode,
+			Message: message,
+		},
+	}
+
+	return &errorResponse
+	// errorReply, _ := json.Marshal(errorResponse)
+
+	// return errorReply
+}
+
 func MakeResult(returnedValues []reflect.Value) json.RawMessage {
 	r := make([]any, len(returnedValues))
 	for k, v := range returnedValues {
@@ -95,6 +111,25 @@ func MakeResult(returnedValues []reflect.Value) json.RawMessage {
 	}
 
 	return marshalledResult
+}
+
+func MakeReply(r Request, returnedValues []reflect.Value) *Response {
+	if r.Id != nil {
+		rpcResult := MakeResult(returnedValues)
+
+		response := new(Response)
+		response.Id = r.Id
+		response.Jsonrpc = protocolVersion
+		response.Result = rpcResult
+
+		return response
+	}
+	return nil
+}
+
+func MakeSingleResponse(r Response) []byte {
+	marshalledResponse, _ := json.Marshal(r)
+	return marshalledResponse
 }
 
 func MakeResponse(r Request, returnedValues []reflect.Value) []byte {
@@ -127,11 +162,11 @@ func DecodeRequest2(requestReader io.Reader) (*Request, error) {
 	return incomingRequest, nil
 }
 
-func DecodeBatchRequests(requestReader io.Reader) (*[]Request, error) {
+func DecodeBatchRequests(requestReader io.Reader) ([]Request, error) {
 	incomingRequest := new([]Request)
 	if err := json.NewDecoder(requestReader).Decode(incomingRequest); err != nil {
 		return nil, err
 	}
 
-	return incomingRequest, nil
+	return *incomingRequest, nil
 }

@@ -1,7 +1,7 @@
 package jsonrpc2
 
 import (
-	"fmt"
+	"encoding/json"
 	"reflect"
 
 	"github.com/ivanovuri/jsonrpc2/inspect"
@@ -44,39 +44,59 @@ func (m *Manager) ProcessRequest(request Request) []byte {
 			}
 		}
 		result := inspect.ExecuteMethod(callableMethod, in)
+		// replyObj := MakeReply(request, result)
+		// return MakeSingleResponse(*replyObj)
 		return MakeResponse(request, result)
 	}
 }
 
-func (m *Manager) ProcessRequestEx(batch []Request) []byte {
-	for _, v := range batch {
-		fmt.Println(v.Id)
-	}
-	return nil
-	// if callableMethod, rpcErr := m.methods.Get(request.Method); rpcErr != nil {
-	// 	return ErrorReply(request.Id,
-	// 		MethodNotFoundCode.Code(),
-	// 		MethodNotFoundCode.Message())
-	// } else {
-	// 	var in []reflect.Value
-	// 	var err error
+func (m *Manager) ProcessRequest2(request Request) *Response {
+	if callableMethod, rpcErr := m.methods.Get(request.Method); rpcErr != nil {
+		return ErrorReply2(request.Id,
+			MethodNotFoundCode.Code(),
+			MethodNotFoundCode.Message())
+	} else {
+		var in []reflect.Value
+		var err error
 
-	// 	if inspect.NamedCall(callableMethod) {
-	// 		in, err = inspect.ParseNamedParams(request.Params, callableMethod)
-	// 		if err != nil {
-	// 			return ErrorReply(request.Id,
-	// 				InvalidParamsCode.Code(),
-	// 				InvalidParamsCode.Message())
-	// 		}
-	// 	} else {
-	// 		in, err = inspect.ParsePositionalParams(request.Params, callableMethod)
-	// 		if err != nil {
-	// 			return ErrorReply(request.Id,
-	// 				InvalidParamsCode.Code(),
-	// 				InvalidParamsCode.Message())
-	// 		}
-	// 	}
-	// 	result := inspect.ExecuteMethod(callableMethod, in)
-	// 	return MakeResponse(request, result)
-	// }
+		if inspect.NamedCall(callableMethod) {
+			in, err = inspect.ParseNamedParams(request.Params, callableMethod)
+			if err != nil {
+				return ErrorReply2(request.Id,
+					InvalidParamsCode.Code(),
+					InvalidParamsCode.Message())
+			}
+		} else {
+			in, err = inspect.ParsePositionalParams(request.Params, callableMethod)
+			if err != nil {
+				return ErrorReply2(request.Id,
+					InvalidParamsCode.Code(),
+					InvalidParamsCode.Message())
+			}
+		}
+		result := inspect.ExecuteMethod(callableMethod, in)
+		replyObj := MakeReply(request, result)
+		return replyObj
+	}
+}
+
+func (m *Manager) ProcessSingleRequest(singleRequest Request) []byte {
+	result, _ := json.Marshal(m.ProcessRequest2(singleRequest))
+
+	return result
+}
+
+func (m *Manager) ProcessBatchRequest(batch []Request) []byte {
+	var replies []Response
+
+	for _, singleRequest := range batch {
+		processed := m.ProcessRequest2(singleRequest)
+		if processed != nil {
+			replies = append(replies, *processed)
+		}
+	}
+
+	result, _ := json.Marshal(replies)
+
+	return result
 }

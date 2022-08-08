@@ -3,7 +3,9 @@ package jsonrpc2
 type JsonRpc2_ interface {
 	RegisterMethod(string, any) error
 	DeregisterMethod(string, any) error
-	ProcessRequest(Request) []byte
+	ProcessRequest(Request) []byte // To be deleted
+	ProcessSingleRequest(Request) []byte
+	ProcessBatchRequest([]Request) []byte
 }
 
 func NewJsonRpc2_() JsonRpc2_ {
