@@ -68,22 +68,7 @@ type ErrorObject struct {
 	Data    json.RawMessage `json:"data,omitempty"`
 }
 
-func ErrorReply(rpcId any, errCode int, message string) []byte {
-	errorResponse := Response{
-		Jsonrpc: protocolVersion,
-		Id:      rpcId,
-		Error: &ErrorObject{
-			Code:    errCode,
-			Message: message,
-		},
-	}
-
-	errorReply, _ := json.Marshal(errorResponse)
-
-	return errorReply
-}
-
-func ErrorReply2(rpcId any, errCode int, message string) *Response {
+func ErrorReply(rpcId any, errCode int, message string) *Response {
 	errorResponse := Response{
 		Jsonrpc: protocolVersion,
 		Id:      rpcId,
@@ -94,9 +79,6 @@ func ErrorReply2(rpcId any, errCode int, message string) *Response {
 	}
 
 	return &errorResponse
-	// errorReply, _ := json.Marshal(errorResponse)
-
-	// return errorReply
 }
 
 func MakeResult(returnedValues []reflect.Value) json.RawMessage {
@@ -153,18 +135,18 @@ func DecodeRequest(requestReader io.Reader) Request {
 	return *incomingRequest
 }
 
-func DecodeRequest2(requestReader io.Reader) (*Request, error) {
+func DecodeSingleRequest(requestReader []byte) (*Request, error) {
 	incomingRequest := new(Request)
-	if err := json.NewDecoder(requestReader).Decode(incomingRequest); err != nil {
+	if err := json.Unmarshal(requestReader, incomingRequest); err != nil {
 		return nil, err
 	}
 
 	return incomingRequest, nil
 }
 
-func DecodeBatchRequests(requestReader io.Reader) ([]Request, error) {
+func DecodeBatchRequests(requestReader []byte) ([]Request, error) {
 	incomingRequest := new([]Request)
-	if err := json.NewDecoder(requestReader).Decode(incomingRequest); err != nil {
+	if err := json.Unmarshal(requestReader, incomingRequest); err != nil {
 		return nil, err
 	}
 

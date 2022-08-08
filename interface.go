@@ -1,14 +1,13 @@
 package jsonrpc2
 
-type JsonRpc2_ interface {
+type JsonRpc2 interface {
 	RegisterMethod(string, any) error
 	DeregisterMethod(string, any) error
-	ProcessRequest(Request) []byte // To be deleted
 	ProcessSingleRequest(Request) []byte
 	ProcessBatchRequest([]Request) []byte
 }
 
-func NewJsonRpc2_() JsonRpc2_ {
+func NewJsonRpc2() JsonRpc2 {
 	rpc := new(Manager)
 	rpc.methods = make(calls)
 

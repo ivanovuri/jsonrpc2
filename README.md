@@ -1,9 +1,11 @@
-# Golang JSON-RPC 2.0 Server using reflect library
+# Golang JSON-RPC 2.0 reflection driven library
 
-This library is an HTTP server implementation of the [JSON-RPC 2.0 Specification](http://www.jsonrpc.org/specification). Not fully specifications compliant yet. Batch requests are coming soon.
+This library is an implementation of the [JSON-RPC 2.0 Specification](http://www.jsonrpc.org/specification). Looks fully specifications compliant. HTTP Server code which was included earlier removed, so this can be used in independent manner.
 
-Heavily driven by reflection, which allows avoiding writing additional logic for custom rpc methods.
+Heavily driven by reflection, which allows avoiding writing additional logic for custom rpc methods. All you need is to create regular Go function and register it in repository with specific name.
 
+The main disadvantage of "independence", the need to write code to implement the transport logic.
+It is possible that major transports will be added soon to make it easier to use by client code, but the ability to use it in its raw form will remain unchanged.
 
 ### Quickstart
 
@@ -12,26 +14,43 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
 
 	"github.com/ivanovuri/jsonrpc2"
 )
 
+func HttpHandler(w http.ResponseWriter, r *http.Request) {
+	rpcProcessor := jsonrpc2.NewJsonRpc2_()
+	rpcProcessor.RegisterMethod("substract", Substract)
+	rpcProcessor.RegisterMethod("add", AddTwoInts)
+	if err := rpcProcessor.RegisterMethod("pa", PositionalAdd); err != nil {
+		fmt.Println(err)
+	}
+
+	incomingRequestData, _ := ioutil.ReadAll(r.Body)
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if rSingle, err := jsonrpc2.DecodeSingleRequest(incomingRequestData); err != nil {
+		if rBatch, _ := jsonrpc2.DecodeBatchRequests(incomingRequestData); err != nil {
+			w.Write(rpcProcessor.ProcessBatchRequest(rBatch))
+		} else {
+			fmt.Println("Wtf, Junk input ;-)")
+		}
+	} else {
+		w.Write(rpcProcessor.ProcessSingleRequest(*rSingle))
+	}
+}
+
 func main() {
-	manager := jsonrpc2.NewJsonRpc2()
+	log.Printf("Starting server on localhost:8888/")
 
-	manager.RegisterCall("substract", Substract)
-	manager.RegisterCall("add", AddTwoInts)
-	manager.RegisterCall("pa", PositionalAdd)
-	// Returning error in case of adding same method twice
-	if err := manager.RegisterCall("count_formula", CountFormula); err != nil {
-		fmt.Println(err)
+	http.HandleFunc("/", HttpHandler)
+	if err := http.ListenAndServe("localhost:8888", nil); err != nil {
+		panic(err)
 	}
-	// Method will not be added here
-	if err := manager.RegisterCall("count_formula", CountFormula); err != nil {
-		fmt.Println(err)
-	}
-
-	manager.Run(":8888", "/")
 }
 
 func Substract(a, b int) int {
@@ -58,40 +77,9 @@ func PositionalAdd(params PositionalAddParamsStructure) int {
 	return (params.A + 3)
 }
 ```
-
-Transport independent using of JSON-RPC 2.0 library.
-Same as earlier, but server logic should be created manually. “Underscore” object (NewJsonRpc2_) is used here for distinction.
-
-```golang
-func HttpHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	request := jsonrpc2.DecodeRequest(r.Body)
-
-	rpcProcessor := jsonrpc2.NewJsonRpc2_()
-	rpcProcessor.RegisterMethod("substract", Substract)
-	rpcProcessor.RegisterMethod("add", AddTwoInts)
-	if err := rpcProcessor.RegisterMethod("pa", PositionalAdd); err != nil {
-		fmt.Println(err)
-	}
-
-	w.Write(rpcProcessor.ProcessRequest(request))
-}
-
-func main() {
-	log.Printf("Starting server on localhost:8888/")
-
-	http.HandleFunc("/", HttpHandler)
-	if err := http.ListenAndServe("localhost:8888", nil); err != nil {
-		panic(err)
-	}
-}
-```
-
-When defining your own registered methods with the rpc server, it is important to consider both named and positional parameters per the specification.
-
-Rpc call with positional parameters:
-```
+### Requests examples
+Single RPC request with positional parameters:
+```bash
 curl --header "Content-Type: application/json" -d '{
     "id": "asd",
     "jsonrpc": "2.0",
@@ -102,9 +90,8 @@ curl --header "Content-Type: application/json" -d '{
     ]
 }' 'http://localhost:8888/'
 ```
-
-Rpc call with named parameters:
-```
+Single RPC request with named parameters:
+```bash
 curl --header "Content-Type: application/json" -d '{
     "id": "asd",
     "jsonrpc": "2.0",
@@ -114,4 +101,12 @@ curl --header "Content-Type: application/json" -d '{
         "B": 5
     }
 }' 'http://localhost:8888/'
+```
+Batch RPC request:
+```bash
+curl --header "Content-Type: application/json" -d '[
+  { "id": "asd3", "jsonrpc": "2.0", "method": "pa", "params": { "A": 5, "B": 5 }},
+  { "jsonrpc": "2.0", "method": "add", "params": [ 20, 10 ]},
+  { "id": "threeplustwo", "jsonrpc": "2.0", "method": "add", "params": [ 3, 2 ]}
+]' 'http://localhost:8888/'
 ```

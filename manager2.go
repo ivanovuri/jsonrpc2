@@ -19,7 +19,7 @@ func (m *Manager) DeregisterMethod(name string, method any) error {
 	return m.methods.Remove(name)
 }
 
-func (m *Manager) ProcessRequest(request Request) []byte {
+func (m *Manager) ProcessRequest(request Request) *Response {
 	if callableMethod, rpcErr := m.methods.Get(request.Method); rpcErr != nil {
 		return ErrorReply(request.Id,
 			MethodNotFoundCode.Code(),
@@ -44,44 +44,13 @@ func (m *Manager) ProcessRequest(request Request) []byte {
 			}
 		}
 		result := inspect.ExecuteMethod(callableMethod, in)
-		// replyObj := MakeReply(request, result)
-		// return MakeSingleResponse(*replyObj)
-		return MakeResponse(request, result)
-	}
-}
-
-func (m *Manager) ProcessRequest2(request Request) *Response {
-	if callableMethod, rpcErr := m.methods.Get(request.Method); rpcErr != nil {
-		return ErrorReply2(request.Id,
-			MethodNotFoundCode.Code(),
-			MethodNotFoundCode.Message())
-	} else {
-		var in []reflect.Value
-		var err error
-
-		if inspect.NamedCall(callableMethod) {
-			in, err = inspect.ParseNamedParams(request.Params, callableMethod)
-			if err != nil {
-				return ErrorReply2(request.Id,
-					InvalidParamsCode.Code(),
-					InvalidParamsCode.Message())
-			}
-		} else {
-			in, err = inspect.ParsePositionalParams(request.Params, callableMethod)
-			if err != nil {
-				return ErrorReply2(request.Id,
-					InvalidParamsCode.Code(),
-					InvalidParamsCode.Message())
-			}
-		}
-		result := inspect.ExecuteMethod(callableMethod, in)
 		replyObj := MakeReply(request, result)
 		return replyObj
 	}
 }
 
 func (m *Manager) ProcessSingleRequest(singleRequest Request) []byte {
-	result, _ := json.Marshal(m.ProcessRequest2(singleRequest))
+	result, _ := json.Marshal(m.ProcessRequest(singleRequest))
 
 	return result
 }
@@ -90,7 +59,7 @@ func (m *Manager) ProcessBatchRequest(batch []Request) []byte {
 	var replies []Response
 
 	for _, singleRequest := range batch {
-		processed := m.ProcessRequest2(singleRequest)
+		processed := m.ProcessRequest(singleRequest)
 		if processed != nil {
 			replies = append(replies, *processed)
 		}
