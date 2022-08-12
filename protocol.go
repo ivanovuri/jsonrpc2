@@ -82,16 +82,25 @@ func ErrorReply(rpcId any, errCode int, message string) *Response {
 }
 
 func MakeResult(returnedValues []reflect.Value) json.RawMessage {
-	r := make([]any, len(returnedValues))
-	for k, v := range returnedValues {
-		r[k] = v.Interface()
-	}
+	var marshalledResult json.RawMessage
+	var err error
 
-	marshalledResult, err := json.Marshal(r)
-	if err != nil {
-		return marshalledResult
-	}
+	if len(returnedValues) > 1 {
+		r := make([]any, len(returnedValues))
+		for k, v := range returnedValues {
+			r[k] = v.Interface()
+		}
 
+		marshalledResult, err = json.Marshal(r)
+		if err != nil {
+			return marshalledResult
+		}
+	} else {
+		marshalledResult, err = json.Marshal(returnedValues[0].Interface())
+		if err != nil {
+			return marshalledResult
+		}
+	}
 	return marshalledResult
 }
 
