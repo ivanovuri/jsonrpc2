@@ -28,6 +28,7 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 	if err := rpcProcessor.RegisterMethod("pa", PositionalAdd); err != nil {
 		fmt.Println(err)
 	}
+	rpcProcessor.RegisterMethod("rsf", returnStructFn)
 
 	incomingRequestData, _ := ioutil.ReadAll(r.Body)
 
@@ -76,6 +77,18 @@ type PositionalAddParamsStructure struct {
 func PositionalAdd(params PositionalAddParamsStructure) int {
 	return (params.A + 3)
 }
+
+type returnStruct struct {
+	Inf string `json:"information"`
+	Res int    `json:"result"`
+}
+
+func returnStructFn(a, b int) returnStruct {
+	return returnStruct{
+		Inf: "big Information string",
+		Res: a + b,
+	}
+}
 ```
 ### Requests examples
 Single RPC request with positional parameters:
@@ -109,4 +122,12 @@ curl --header "Content-Type: application/json" -d '[
   { "jsonrpc": "2.0", "method": "add", "params": [ 20, 10 ]},
   { "id": "threeplustwo", "jsonrpc": "2.0", "method": "add", "params": [ 3, 2 ]}
 ]' 'http://localhost:8888/'
+RPC to function returning struct:
+```bash
+curl --header "Content-Type: application/json" -d '{
+    "id": "asd",
+    "jsonrpc": "2.0",
+    "method": "rsf",
+    "params": [1,2]
+}' 'http://localhost:8888/'
 ```
