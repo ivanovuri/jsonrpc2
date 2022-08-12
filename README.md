@@ -122,6 +122,7 @@ curl --header "Content-Type: application/json" -d '[
   { "jsonrpc": "2.0", "method": "add", "params": [ 20, 10 ]},
   { "id": "threeplustwo", "jsonrpc": "2.0", "method": "add", "params": [ 3, 2 ]}
 ]' 'http://localhost:8888/'
+```
 RPC to function returning struct:
 ```bash
 curl --header "Content-Type: application/json" -d '{
